@@ -78,3 +78,35 @@ def chat(messages: list, ctx: dict | None = None, max_turns: int = 6) -> tuple[s
                 out = {"error": str(e)}
             messages.append({"role": "tool", "tool_call_id": c["id"], "content": json.dumps(out)})
     return "Sorry, I couldn't finish that - please try again.", messages
+
+
+# ---------------- no-LLM fallback (free-tier LLMs rate-limit; payment flow must still work) ----------------
+import re
+_ACCEPT = re.compile(r"\b(yes|accept|accepted|confirm|proceed|go ahead|ok|okay|pay|payment link|checkout)\b", re.I)
+_STATUS = re.compile(r"\b(paid|status|payment (done|complete)|completed|did it)\b", re.I)
+_PHI = re.compile(r"real patient|patient'?s? (name|data)|\bDOB\b|date of birth|identifiable", re.I)
+_BIO = re.compile(r"vcf|rna|seq|annot|variant|genom|exome|quote|clinvar|analy", re.I)
+
+def fallback_reply(message: str, ctx: dict) -> str:
+    """Deterministic keyword agent used when the LLM is unavailable. Same tools, same pricing."""
+    note = "_(The AI model is busy, so I'm using the standard quoting flow.)_\n\n"
+    if _PHI.search(message):
+        return note + "I can only work with public or synthetic data, not real patient-identifiable data."
+    job = db.get_job(ctx["job_id"]) if ctx.get("job_id") else None
+    if job and _STATUS.search(message) and not _ACCEPT.search(message.replace("paid", "")):
+        return note + f"Job `{job['id']}` is **{job['status'].replace('_', ' ')}** (${job['amount_usd']:.2f})."
+    if job and job["status"] in ("quoted", "awaiting_payment") and _ACCEPT.search(message):
+        if not job.get("approve_url"):
+            run_tool("create_paypal_order", {"job_id": job["id"]}, ctx); job = db.get_job(job["id"])
+        return note + f"Here is your PayPal checkout link for **${job['amount_usd']:.2f}**:\n\n{job['approve_url']}\n\nAfter paying, the job runs automatically."
+    if not _BIO.search(message):
+        return note + "I can quote bioinformatics jobs (VCF annotation or summary, RNA-seq QC). Describe the job and its size."
+    low = message.lower()
+    jt = "rnaseq_qc" if re.search(r"rna", low) else "vcf_annotation" if re.search(r"annot", low) else "vcf_summary" if re.search(r"vcf|variant|summar", low) else "other"
+    m = re.search(r"(\d+(?:\.\d+)?)\s*(gb|mb)", low)
+    size = (float(m.group(1)) * (1000 if m.group(2) == "gb" else 1)) if m else (50.0 if jt == "rnaseq_qc" else 1.0)
+    size = min(size, 100.0)
+    q = run_tool("create_quote", {"job_type": jt, "size_mb": size, "rush": bool(re.search(r"rush|urgent", low)),
+                                  "summary": message[:120]}, ctx)
+    items = "\n".join(f"- {i['item']}: ${i['usd']:.2f}" for i in q["line_items"])
+    return note + f"**Quote** (job `{q['job_id']}`, ~{q['est_minutes']} min):\n\n{items}\n\n**Total: ${q['total_usd']:.2f}**\n\nReply **yes** to get a PayPal payment link."

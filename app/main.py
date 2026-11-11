@@ -22,6 +22,7 @@ def on_payment_confirmed(job_id: str):
     threading.Thread(target=runner.run_job, args=(db.get_job(job_id),), daemon=True).start()
 
 SESSIONS: dict[str, list] = {}
+SESSION_CTX: dict[str, dict] = {}
 
 @app.get("/health")
 def health(): return {"ok": True}
@@ -30,14 +31,17 @@ def health(): return {"ok": True}
 async def api_chat(payload: dict):
     sid = payload.get("session_id", "default")
     hist = SESSIONS.setdefault(sid, [])
+    ctx = SESSION_CTX.setdefault(sid, {})
+    ctx["file_path"] = payload.get("file_path")
+    n0 = len(hist)
     hist.append({"role": "user", "content": payload["message"]})
-    ctx = {"file_path": payload.get("file_path")}
     try:
         reply, SESSIONS[sid] = agent.chat(hist, ctx)
     except Exception as e:
-        import logging; logging.getLogger('uvicorn.error').error('LLM call failed: %r', e)
-        hist.pop()   # drop the unanswered user turn so the session stays valid
-        raise HTTPException(503, "The AI model is busy or rate-limited (free tier). Please try again in a minute.")
+        import logging; logging.getLogger("uvicorn.error").error("LLM call failed, using fallback: %r", e)
+        del hist[n0:]                       # drop partial tool turns so the history stays valid
+        reply = agent.fallback_reply(payload["message"], ctx)
+        hist += [{"role": "user", "content": payload["message"]}, {"role": "assistant", "content": reply}]
     return {"reply": reply, "job_id": ctx.get("job_id")}
 
 @app.post("/api/upload")
