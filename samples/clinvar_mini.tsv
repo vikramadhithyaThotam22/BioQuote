@@ -1,0 +1,8 @@
+# SYNTHETIC ClinVar-style lookup for demo only (not real clinical data)
+chrom	pos	ref	alt	gene	clnsig	condition
+17	43000100	G	A	GENE_A	Pathogenic	Synthetic hereditary condition A
+13	32000200	C	T	GENE_B	Likely_pathogenic	Synthetic hereditary condition B
+7	117000300	A	G	GENE_C	Pathogenic	Synthetic condition C
+1	11000400	T	C	GENE_D	Uncertain_significance	Synthetic condition D
+2	47000500	G	T	GENE_E	Benign	Synthetic condition E
+19	11000600	C	G	GENE_F	Likely_benign	Synthetic condition F

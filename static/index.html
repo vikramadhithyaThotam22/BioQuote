@@ -1,0 +1,52 @@
+<!doctype html><html><head><meta charset="utf-8"><title>BioQuote Agent</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/dist/ag-grid-community.min.js"></script>
+<style>
+body{font-family:system-ui,sans-serif;margin:0;background:#f4f6f8;color:#1b2733}
+header{background:#0b5d4b;color:#fff;padding:14px 24px}header small{opacity:.8}
+main{display:grid;grid-template-columns:minmax(300px,420px) 1fr;gap:16px;padding:16px}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.card{background:#fff;border-radius:8px;padding:14px;box-shadow:0 1px 3px #0002}
+#log{height:380px;overflow:auto;border:1px solid #dde;border-radius:6px;padding:8px;margin-bottom:8px;white-space:pre-wrap}
+.u{color:#0b5d4b;font-weight:600}.a{margin-bottom:8px}
+input[type=text]{width:70%;padding:8px}button{padding:8px 12px;cursor:pointer}
+#grid{height:480px}#report{white-space:pre-wrap;margin-top:8px}
+</style></head><body>
+<header><b>BioQuote Agent</b> <small>– quote, pay (PayPal sandbox), get results. Synthetic/public data only.</small></header>
+<main>
+<div class="card"><h3>Chat</h3><div id="log"></div>
+<input type="file" id="file"> <small id="fs"></small><br><br>
+<input type="text" id="msg" placeholder="e.g. Annotate my VCF and summarize pathogenic variants">
+<button onclick="send()">Send</button></div>
+<div class="card"><h3>Jobs <button onclick="load()">Refresh</button></h3><div id="grid" class="ag-theme-quartz"></div>
+<div id="report"></div></div>
+</main>
+<script>
+const sid=Math.random().toString(36).slice(2);let filePath=null;
+const log=document.getElementById('log');
+function add(c,t){const d=document.createElement('div');d.className='a';d.innerHTML='<span class="'+c+'">'+(c=='u'?'You':'Agent')+':</span> ';d.append(t);
+  log.append(d);log.scrollTop=log.scrollHeight;return d}
+function linkify(el){el.innerHTML=el.innerHTML.replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank">$1</a>')}
+document.getElementById('file').onchange=async e=>{const f=new FormData();f.append('file',e.target.files[0]);
+  const r=await (await fetch('/api/upload',{method:'POST',body:f})).json();filePath=r.file_path;
+  document.getElementById('fs').textContent='uploaded '+r.size_mb+' MB'};
+async function send(){const m=document.getElementById('msg');const t=m.value.trim();if(!t)return;m.value='';add('u',t);
+  const d=add('a','…');
+  try{const r=await (await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({session_id:sid,message:filePath?t+' (uploaded file size known; file attached)':t,file_path:filePath})})).json();
+    d.lastChild.textContent=r.reply||r.detail||'(no reply)';linkify(d);load()}catch(e){d.lastChild.textContent='Error: '+e}}
+document.getElementById('msg').addEventListener('keydown',e=>{if(e.key==='Enter')send()});
+const badge=p=>({completed:'✅',paid:'💳',running:'⚙️',awaiting_payment:'⏳',quoted:'📝',failed:'❌'}[p.value]||'')+' '+p.value;
+const grid=agGrid.createGrid(document.getElementById('grid'),{
+  columnDefs:[{field:'id',width:120},{field:'request',flex:2,filter:true},{field:'job_type',filter:true},
+   {field:'amount_usd',headerName:'USD',valueFormatter:p=>'$'+(+p.value).toFixed(2),width:90},
+   {field:'status',cellRenderer:badge,filter:true,width:170},
+   {field:'created',sort:'desc',valueFormatter:p=>new Date(p.value*1000).toLocaleString(),width:170},
+   {headerName:'Result',cellRenderer:p=>p.data.status==='completed'?'<a href="/api/jobs/'+p.data.id+'/result">CSV</a>':'',width:90}],
+  defaultColDef:{sortable:true,resizable:true},rowSelection:'single',
+  onRowClicked:async e=>{const j=await (await fetch('/api/jobs/'+e.data.id)).json();
+    document.getElementById('report').textContent=j.result&&j.result.report?'Report ('+j.id+'):\n'+j.result.report:''}});
+async function load(){grid.setGridOption('rowData',await (await fetch('/api/jobs')).json())}
+load();setInterval(load,5000);
+add('a','Hi! Describe a small bioinformatics job (e.g. VCF annotation) and I will quote it.');
+</script></body></html>
