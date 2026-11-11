@@ -15,7 +15,7 @@ Jobs run automatically after payment is confirmed. Only public/synthetic data is
 patient identifiable data. Rules: ONE user request = ONE job = ONE create_quote call (pick the single best job_type; annotation includes
 the summary of pathogenic variants). Create ONE PayPal order per job_id, only once. Politely decline anything
 unrelated to bioinformatics jobs, quotes or payments (no general chat, trivia or advice). If the user gives no file size, assume a typical size (VCF ~1 MB, RNA-seq QC ~50 MB) and say so; never assume
-more than 100 MB. Keep replies short."""
+more than 100 MB. Keep replies short. Use simple bullet lists, never tables."""
 
 _RAW_TOOLS = [
  {"name": "create_quote", "description": "Create an itemized quote for a job. Returns job_id and total.",

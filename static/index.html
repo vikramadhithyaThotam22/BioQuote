@@ -1,6 +1,8 @@
 <!doctype html><html><head><meta charset="utf-8"><title>BioQuote Agent</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <script src="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/dist/ag-grid-community.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
 <style>
 body{font-family:system-ui,sans-serif;margin:0;background:#f4f6f8;color:#1b2733}
 header{background:#0b5d4b;color:#fff;padding:14px 24px}header small{opacity:.8}
@@ -9,6 +11,7 @@ main{display:grid;grid-template-columns:minmax(300px,420px) 1fr;gap:16px;padding
 .card{background:#fff;border-radius:8px;padding:14px;box-shadow:0 1px 3px #0002}
 #log{height:380px;overflow:auto;border:1px solid #dde;border-radius:6px;padding:8px;margin-bottom:8px;white-space:pre-wrap}
 .u{color:#0b5d4b;font-weight:600}.a{margin-bottom:8px}
+#log .body{white-space:normal}#log .body p{margin:4px 0}#log table{border-collapse:collapse;margin:6px 0}#log td,#log th{border:1px solid #cfd8dc;padding:3px 8px}
 input[type=text]{width:70%;padding:8px}button{padding:8px 12px;cursor:pointer}
 #grid{height:480px}#report{white-space:pre-wrap;margin-top:8px}
 </style></head><body>
@@ -26,7 +29,9 @@ const sid=Math.random().toString(36).slice(2);let filePath=null;
 const log=document.getElementById('log');
 function add(c,t){const d=document.createElement('div');d.className='a';d.innerHTML='<span class="'+c+'">'+(c=='u'?'You':'Agent')+':</span> ';d.append(t);
   log.append(d);log.scrollTop=log.scrollHeight;return d}
-function linkify(el){el.innerHTML=el.innerHTML.replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank">$1</a>')}
+function setAgent(d,text){d.lastChild.remove();const b=document.createElement('div');b.className='body';
+  b.innerHTML=DOMPurify.sanitize(marked.parse(text||''));b.querySelectorAll('a').forEach(a=>{a.target='_blank';a.rel='noopener'});
+  d.append(b);log.scrollTop=log.scrollHeight}
 document.getElementById('file').onchange=async e=>{const f=new FormData();f.append('file',e.target.files[0]);
   const r=await (await fetch('/api/upload',{method:'POST',body:f})).json();filePath=r.file_path;
   document.getElementById('fs').textContent='uploaded '+r.size_mb+' MB'};
@@ -34,7 +39,7 @@ async function send(){const m=document.getElementById('msg');const t=m.value.tri
   const d=add('a','…');
   try{const r=await (await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({session_id:sid,message:filePath?t+' (uploaded file size known; file attached)':t,file_path:filePath})})).json();
-    d.lastChild.textContent=r.reply||r.detail||'(no reply)';linkify(d);load()}catch(e){d.lastChild.textContent='Error: '+e}}
+    setAgent(d,r.reply||r.detail||'(no reply)');load()}catch(e){setAgent(d,'Error: '+e)}}
 document.getElementById('msg').addEventListener('keydown',e=>{if(e.key==='Enter')send()});
 const badge=p=>({completed:'✅',paid:'💳',running:'⚙️',awaiting_payment:'⏳',quoted:'📝',failed:'❌'}[p.value]||'')+' '+p.value;
 const grid=agGrid.createGrid(document.getElementById('grid'),{
