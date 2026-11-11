@@ -1,8 +1,8 @@
 """Tiny SQLite store for quotes/jobs."""
-import json, sqlite3, time, uuid
+import json, os, sqlite3, time, uuid
 from pathlib import Path
 
-DB_PATH = Path(__file__).resolve().parent.parent / "bioquote.db"
+DB_PATH = Path(os.getenv("BIOQUOTE_DB") or Path(__file__).resolve().parent.parent / "bioquote.db")
 
 def _conn():
     c = sqlite3.connect(DB_PATH)

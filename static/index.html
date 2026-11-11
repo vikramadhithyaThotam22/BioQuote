@@ -6,14 +6,14 @@
 <style>
 body{font-family:system-ui,sans-serif;margin:0;background:#f4f6f8;color:#1b2733}
 header{background:#0b5d4b;color:#fff;padding:14px 24px}header small{opacity:.8}
-main{display:grid;grid-template-columns:minmax(300px,420px) 1fr;gap:16px;padding:16px}
+main{display:grid;grid-template-columns:minmax(300px,340px) 1fr;gap:16px;padding:16px}
 @media(max-width:900px){main{grid-template-columns:1fr}}
 .card{background:#fff;border-radius:8px;padding:14px;box-shadow:0 1px 3px #0002}
 #log{height:380px;overflow:auto;border:1px solid #dde;border-radius:6px;padding:8px;margin-bottom:8px;white-space:pre-wrap}
 .u{color:#0b5d4b;font-weight:600}.a{margin-bottom:8px}
 #log .body{white-space:normal}#log .body p{margin:4px 0}#log table{border-collapse:collapse;margin:6px 0}#log td,#log th{border:1px solid #cfd8dc;padding:3px 8px}
 input[type=text]{width:70%;padding:8px}button{padding:8px 12px;cursor:pointer}
-#grid{height:480px}#report{white-space:pre-wrap;margin-top:8px}
+#grid{height:480px}#report{margin-top:8px}#report p,#report ul{margin:4px 0}
 </style></head><body>
 <header><b>BioQuote Agent</b> <small>– quote, pay (PayPal sandbox), get results. Synthetic/public data only.</small></header>
 <main>
@@ -43,14 +43,14 @@ async function send(){const m=document.getElementById('msg');const t=m.value.tri
 document.getElementById('msg').addEventListener('keydown',e=>{if(e.key==='Enter')send()});
 const badge=p=>({completed:'✅',paid:'💳',running:'⚙️',awaiting_payment:'⏳',quoted:'📝',failed:'❌'}[p.value]||'')+' '+p.value;
 const grid=agGrid.createGrid(document.getElementById('grid'),{
-  columnDefs:[{field:'id',width:120},{field:'request',flex:2,filter:true},{field:'job_type',filter:true},
-   {field:'amount_usd',headerName:'USD',valueFormatter:p=>'$'+(+p.value).toFixed(2),width:90},
-   {field:'status',cellRenderer:badge,filter:true,width:170},
-   {field:'created',sort:'desc',valueFormatter:p=>new Date(p.value*1000).toLocaleString(),width:170},
-   {headerName:'Result',cellRenderer:p=>p.data.status==='completed'?'<a href="/api/jobs/'+p.data.id+'/result">CSV</a>':'',width:90}],
+  columnDefs:[{field:'id',width:110},{field:'request',flex:2,minWidth:200,filter:true},{field:'job_type',width:120,filter:true},
+   {field:'amount_usd',headerName:'USD',valueFormatter:p=>'$'+(+p.value).toFixed(2),width:80},
+   {field:'status',cellRenderer:badge,filter:true,width:140},
+   {field:'created',sort:'desc',valueFormatter:p=>new Date(p.value*1000).toLocaleString([],{dateStyle:'short',timeStyle:'short'}),width:140},
+   {headerName:'Result',cellRenderer:p=>p.data.status==='completed'?'<a href="/api/jobs/'+p.data.id+'/result">CSV</a>':'',width:80}],
   defaultColDef:{sortable:true,resizable:true},rowSelection:'single',
   onRowClicked:async e=>{const j=await (await fetch('/api/jobs/'+e.data.id)).json();
-    document.getElementById('report').textContent=j.result&&j.result.report?'Report ('+j.id+'):\n'+j.result.report:''}});
+    document.getElementById('report').innerHTML=j.result&&j.result.report?'<b>Report ('+j.id+')</b>'+DOMPurify.sanitize(marked.parse(j.result.report)):''}});
 async function load(){grid.setGridOption('rowData',await (await fetch('/api/jobs')).json())}
 load();setInterval(load,5000);
 add('a','Hi! Describe a small bioinformatics job (e.g. VCF annotation) and I will quote it.');
