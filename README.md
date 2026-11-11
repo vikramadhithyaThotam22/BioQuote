@@ -56,7 +56,7 @@ Open http://localhost:8000.
 2. Review the quote, reply *"yes"*, and open the PayPal link.
 3. Pay with a **sandbox Personal (buyer) account** (create one at developer.paypal.com → Sandbox Accounts;
    a buyer cannot be the same account as the merchant, and both should be in the US so USD works).
-4. After payment the job moves `awaiting_payment → paid → running → completed` in the dashboard.
+4. After payment the job moves `awaiting_payment → paid → running → completed` in the dashboard. Each completed job has a **PDF report** and an annotated **CSV** to download.
    Click the row for the report; download the annotated CSV.
 
 ## Deploy on Render

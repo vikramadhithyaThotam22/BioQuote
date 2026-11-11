@@ -3,9 +3,9 @@ from dotenv import load_dotenv
 load_dotenv()
 import json, threading
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File
-from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
-from . import agent, db, paypal, runner, seed
+from . import agent, db, paypal, pdfreport, runner, seed
 
 app = FastAPI(title="BioQuote Agent")
 
@@ -111,6 +111,14 @@ def job_result(job_id: str):
     r = json.loads(j["result_json"]) if j and j.get("result_json") else {}
     if not r.get("file") or not os.path.exists(r["file"]): raise HTTPException(404, "no result yet")
     return FileResponse(r["file"], filename=os.path.basename(r["file"]))
+
+@app.get("/api/jobs/{job_id}/report.pdf")
+def job_report_pdf(job_id: str):
+    j = db.get_job(job_id)
+    r = json.loads(j["result_json"]) if j and j.get("result_json") else None
+    if not j or not r or not r.get("report"): raise HTTPException(404, "report not ready")
+    return Response(pdfreport.build_pdf(j, r), media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="bioquote_{job_id}_report.pdf"'})
 
 @app.post("/api/dev/pay/{job_id}")
 def dev_pay(job_id: str):

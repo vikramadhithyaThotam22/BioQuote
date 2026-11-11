@@ -47,10 +47,10 @@ const grid=agGrid.createGrid(document.getElementById('grid'),{
    {field:'amount_usd',headerName:'USD',valueFormatter:p=>'$'+(+p.value).toFixed(2),width:80},
    {field:'status',cellRenderer:badge,filter:true,width:140},
    {field:'created',sort:'desc',valueFormatter:p=>new Date(p.value*1000).toLocaleString([],{dateStyle:'short',timeStyle:'short'}),width:140},
-   {headerName:'Result',cellRenderer:p=>p.data.status==='completed'?'<a href="/api/jobs/'+p.data.id+'/result">CSV</a>':'',width:80}],
+   {headerName:'Result',cellRenderer:p=>p.data.status==='completed'?'<a href="/api/jobs/'+p.data.id+'/report.pdf">PDF</a> · <a href="/api/jobs/'+p.data.id+'/result">CSV</a>':'',width:120}],
   defaultColDef:{sortable:true,resizable:true},rowSelection:'single',
   onRowClicked:async e=>{const j=await (await fetch('/api/jobs/'+e.data.id)).json();
-    document.getElementById('report').innerHTML=j.result&&j.result.report?'<b>Report ('+j.id+')</b>'+DOMPurify.sanitize(marked.parse(j.result.report)):''}});
+    document.getElementById('report').innerHTML=j.result&&j.result.report?'<b>Report ('+j.id+')</b> <a href="/api/jobs/'+j.id+'/report.pdf">Download PDF</a>'+DOMPurify.sanitize(marked.parse(j.result.report)):''}});
 async function load(){grid.setGridOption('rowData',await (await fetch('/api/jobs')).json())}
 load();setInterval(load,5000);
 add('a','Hi! Describe a small bioinformatics job (e.g. VCF annotation) and I will quote it.');
